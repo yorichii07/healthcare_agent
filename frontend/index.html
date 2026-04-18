@@ -1,250 +1,11 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Healthcare Planning Assistant Agent</title>
-<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-<style>
-  :root {
-    --bg:        #0a0f1e;
-    --surface:   #111827;
-    --card:      #161f35;
-    --border:    rgba(99,179,237,0.12);
-    --accent:    #38bdf8;
-    --accent2:   #818cf8;
-    --accent3:   #34d399;
-    --warn:      #f59e0b;
-    --danger:    #f87171;
-    --text:      #e2e8f0;
-    --muted:     #64748b;
-    --serif:     'DM Serif Display', serif;
-    --sans:      'DM Sans', sans-serif;
-    --mono:      'JetBrains Mono', monospace;
-  }
-
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-  body {
-    font-family: var(--sans);
-    background: var(--bg);
-    color: var(--text);
-    min-height: 100vh;
-    overflow-x: hidden;
-  }
-
-  /* ── BACKGROUND MESH ── */
-  body::before {
-    content: '';
-    position: fixed; inset: 0; z-index: 0; pointer-events: none;
-    background:
-      radial-gradient(ellipse 80% 50% at 20% 10%, rgba(56,189,248,.08) 0%, transparent 60%),
-      radial-gradient(ellipse 60% 40% at 80% 80%, rgba(129,140,248,.07) 0%, transparent 60%),
-      radial-gradient(ellipse 40% 30% at 60% 30%, rgba(52,211,153,.05) 0%, transparent 50%);
-  }
-
-  /* ── GRID LINES ── */
-  body::after {
-    content: '';
-    position: fixed; inset: 0; z-index: 0; pointer-events: none;
-    background-image:
-      linear-gradient(rgba(99,179,237,.04) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(99,179,237,.04) 1px, transparent 1px);
-    background-size: 40px 40px;
-  }
-
-  .container { position: relative; z-index: 1; max-width: 1100px; margin: 0 auto; padding: 0 24px 60px; }
-
-  /* ── HEADER ── */
-  header {
-    padding: 48px 0 40px;
-    display: flex; align-items: center; gap: 20px;
-    border-bottom: 1px solid var(--border);
-    margin-bottom: 40px;
-  }
-  .logo-icon {
-    width: 52px; height: 52px; border-radius: 14px;
-    background: linear-gradient(135deg, var(--accent), var(--accent2));
-    display: flex; align-items: center; justify-content: center;
-    font-size: 24px; flex-shrink: 0;
-    box-shadow: 0 0 24px rgba(56,189,248,.3);
-  }
-  .header-text h1 {
-    font-family: var(--serif);
-    font-size: 2rem; line-height: 1;
-    background: linear-gradient(135deg, var(--accent) 30%, var(--accent2));
-    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-  }
-  .header-text p { font-size: .85rem; color: var(--muted); margin-top: 4px; letter-spacing: .04em; }
-
-  /* ── INPUT AREA ── */
-  .input-section {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 20px;
-    padding: 32px;
-    margin-bottom: 32px;
-  }
-  .input-section h2 { font-family: var(--serif); font-size: 1.4rem; margin-bottom: 8px; }
-  .input-section p  { color: var(--muted); font-size: .9rem; margin-bottom: 24px; }
-
-  .goal-input {
-    width: 100%; padding: 16px 20px;
-    background: var(--card); border: 1px solid var(--border);
-    border-radius: 12px; color: var(--text); font-family: var(--sans); font-size: 1rem;
-    outline: none; transition: border-color .2s, box-shadow .2s;
-  }
-  .goal-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(56,189,248,.1); }
-  .goal-input::placeholder { color: var(--muted); }
-
-  .quick-goals {
-    display: flex; flex-wrap: wrap; gap: 8px; margin: 16px 0 24px;
-  }
-  .quick-btn {
-    padding: 6px 14px; border-radius: 20px; font-size: .8rem; cursor: pointer;
-    border: 1px solid var(--border); background: var(--card); color: var(--muted);
-    transition: all .2s; font-family: var(--sans);
-  }
-  .quick-btn:hover { border-color: var(--accent); color: var(--accent); background: rgba(56,189,248,.06); }
-
-  .run-btn {
-    display: flex; align-items: center; gap: 10px;
-    padding: 14px 32px; border-radius: 12px;
-    background: linear-gradient(135deg, var(--accent), var(--accent2));
-    border: none; color: #0a0f1e; font-family: var(--sans); font-weight: 600; font-size: 1rem;
-    cursor: pointer; transition: transform .15s, box-shadow .15s;
-    box-shadow: 0 4px 20px rgba(56,189,248,.25);
-  }
-  .run-btn:hover  { transform: translateY(-1px); box-shadow: 0 8px 28px rgba(56,189,248,.35); }
-  .run-btn:active { transform: translateY(0); }
-  .run-btn:disabled { opacity: .5; cursor: not-allowed; transform: none; }
-
-  /* ── SPINNER ── */
-  .spinner {
-    width: 18px; height: 18px; border: 2px solid rgba(10,15,30,.3);
-    border-top-color: #0a0f1e; border-radius: 50%;
-    animation: spin .7s linear infinite;
-  }
-  @keyframes spin { to { transform: rotate(360deg); } }
-
-  /* ── SUMMARY CARD ── */
-  .summary-card {
-    background: linear-gradient(135deg, rgba(56,189,248,.08), rgba(129,140,248,.08));
-    border: 1px solid rgba(56,189,248,.2);
-    border-radius: 20px; padding: 28px; margin-bottom: 32px;
-    display: none;
-  }
-  .summary-card.visible { display: block; animation: fadeUp .4s ease; }
-  .summary-card h2 { font-family: var(--serif); font-size: 1.6rem; margin-bottom: 6px; }
-  .summary-card .desc { color: var(--accent); font-size: .9rem; font-weight: 500; margin-bottom: 16px; }
-  .summary-card p  { color: var(--muted); font-size: .9rem; line-height: 1.7; }
-  .stat-row { display: flex; gap: 20px; margin-top: 20px; flex-wrap: wrap; }
-  .stat {
-    flex: 1; min-width: 120px; padding: 16px 20px;
-    background: var(--card); border: 1px solid var(--border); border-radius: 12px;
-    text-align: center;
-  }
-  .stat .num { font-family: var(--serif); font-size: 2rem; color: var(--accent); }
-  .stat .lbl { font-size: .75rem; color: var(--muted); margin-top: 2px; }
-
-  /* ── TIMELINE ── */
-  .timeline-section { display: none; margin-bottom: 32px; }
-  .timeline-section.visible { display: block; animation: fadeUp .5s ease; }
-  .timeline-section h2 {
-    font-family: var(--serif); font-size: 1.4rem; margin-bottom: 24px;
-    display: flex; align-items: center; gap: 10px;
-  }
-  .timeline { display: flex; flex-direction: column; gap: 0; position: relative; }
-  .timeline::before {
-    content: ''; position: absolute; left: 23px; top: 0; bottom: 0; width: 1px;
-    background: linear-gradient(to bottom, var(--accent), var(--accent2), transparent);
-  }
-
-  .timeline-item {
-    display: flex; gap: 20px; padding: 0 0 24px;
-    animation: fadeUp .3s ease both;
-  }
-  .tl-dot {
-    width: 46px; height: 46px; border-radius: 12px; flex-shrink: 0;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 1.1rem; position: relative; z-index: 1;
-  }
-  .tl-dot.consultation { background: rgba(56,189,248,.15); border: 1px solid rgba(56,189,248,.3); }
-  .tl-dot.lab_test     { background: rgba(129,140,248,.15); border: 1px solid rgba(129,140,248,.3); }
-  .tl-dot.medication   { background: rgba(52,211,153,.15);  border: 1px solid rgba(52,211,153,.3); }
-  .tl-dot.followup     { background: rgba(245,158,11,.15);  border: 1px solid rgba(245,158,11,.3); }
-
-  .tl-content {
-    flex: 1; background: var(--card); border: 1px solid var(--border);
-    border-radius: 14px; padding: 18px 20px;
-    transition: border-color .2s;
-  }
-  .tl-content:hover { border-color: rgba(56,189,248,.25); }
-
-  .tl-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
-  .tl-title  { font-weight: 500; font-size: .95rem; flex: 1; }
-  .tl-badge  {
-    padding: 3px 10px; border-radius: 20px; font-size: .72rem;
-    font-weight: 500; white-space: nowrap; flex-shrink: 0;
-  }
-  .badge-validated        { background: rgba(52,211,153,.15); color: var(--accent3); }
-  .badge-alternative_found{ background: rgba(245,158,11,.15);  color: var(--warn); }
-  .badge-unavailable      { background: rgba(248,113,113,.15); color: var(--danger); }
-  .badge-scheduled        { background: rgba(56,189,248,.15);  color: var(--accent); }
-  .badge-pending          { background: rgba(100,116,139,.15); color: var(--muted); }
-
-  .tl-meta { display: flex; gap: 16px; margin-top: 10px; flex-wrap: wrap; }
-  .tl-meta span { font-size: .78rem; color: var(--muted); display: flex; align-items: center; gap: 5px; }
-  .tl-notes { margin-top: 10px; font-size: .8rem; color: #94a3b8; padding: 8px 12px; background: var(--surface); border-radius: 8px; border-left: 2px solid var(--border); }
-  .tl-dep   { margin-top: 8px; font-size: .75rem; color: var(--muted); font-family: var(--mono); }
-
-  /* ── TASKS GRID ── */
-  .tasks-section { display: none; margin-bottom: 32px; }
-  .tasks-section.visible { display: block; animation: fadeUp .6s ease; }
-  .tasks-section h2 { font-family: var(--serif); font-size: 1.4rem; margin-bottom: 20px; }
-  .tasks-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; }
-
-  .task-card {
-    background: var(--card); border: 1px solid var(--border);
-    border-radius: 14px; padding: 20px;
-    transition: transform .2s, border-color .2s;
-  }
-  .task-card:hover { transform: translateY(-2px); border-color: rgba(56,189,248,.2); }
-  .task-card-header { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
-  .task-num {
-    width: 28px; height: 28px; border-radius: 8px;
-    background: linear-gradient(135deg, var(--accent), var(--accent2));
-    display: flex; align-items: center; justify-content: center;
-    font-size: .75rem; font-weight: 600; color: #0a0f1e; flex-shrink: 0;
-  }
-  .task-title { font-size: .9rem; font-weight: 500; }
-  .task-resource { font-size: .8rem; color: var(--accent); margin-bottom: 8px; }
-  .task-info { font-size: .78rem; color: var(--muted); display: flex; flex-direction: column; gap: 4px; }
-
-  /* ── ANIMATIONS ── */
-  @keyframes fadeUp  { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
-  @keyframes slideIn { from { opacity: 0; transform: translateX(-8px); } to { opacity: 1; transform: translateX(0); } }
-
-  /* ── SECTION LABEL ── */
-  .section-label {
-    font-size: .72rem; letter-spacing: .1em; text-transform: uppercase;
-    color: var(--muted); margin-bottom: 6px; font-weight: 500;
-  }
-
-  .error-msg {
-    background: rgba(248,113,113,.1); border: 1px solid rgba(248,113,113,.25);
-    color: var(--danger); padding: 16px 20px; border-radius: 12px; margin-bottom: 24px;
-    font-size: .9rem; display: none;
-  }
-  .error-msg.visible { display: block; }
-
-  @media (max-width: 600px) {
-    header { flex-direction: column; align-items: flex-start; }
-    .header-text h1 { font-size: 1.5rem; }
-    .stat-row { gap: 12px; }
-    .tasks-grid { grid-template-columns: 1fr; }
-  }
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Healthcare Planning Assistant Agent</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/assets/css/style.css">
 </head>
 <body>
 <div class="container">
@@ -254,21 +15,32 @@
     <div class="logo-icon">🏥</div>
     <div class="header-text">
       <h1>Healthcare Planning Agent</h1>
-      <p>Agentic AI · Multi-step Reasoning · LLM-Powered · Tool-Integrated</p>
+      <p>Agentic AI · FastAPI Backend · Python Powered · Tool-Integrated</p>
     </div>
   </header>
 
-  <!-- INPUT -->
+  <!-- BACKEND STATUS BANNER -->
+  <div class="status-banner online" id="statusBanner">
+    <div class="status-dot online" id="statusDot"></div>
+    <span id="statusText">Agent is Live</span>
+  </div>
+
+  <!-- INPUT SECTION -->
   <section class="input-section">
-    <h2>Enter Healthcare Goal</h2>
-    <p>The agent will autonomously decompose your goal, validate resource availability, resolve dependencies, and generate an optimized execution plan.</p>
+    <div class="panel-header">
+      <div>
+        <h2>Enter Healthcare Goal</h2>
+        <p>The agent will translate your goal into an execution plan, verify resources, and return a structured outcome.</p>
+      </div>
+      <div class="control-hint">Live planning pipeline</div>
+    </div>
 
     <div class="section-label">Healthcare Goal</div>
     <input class="goal-input" id="goalInput" type="text"
       placeholder="e.g. Create a treatment plan for diabetes management…" />
 
     <div class="quick-goals">
-      <span style="font-size:.78rem;color:var(--muted);align-self:center;margin-right:4px;">Quick goals:</span>
+      <span class="quick-label">Quick goals:</span>
       <button class="quick-btn" onclick="setGoal('Treatment plan for diabetes')">🩺 Diabetes</button>
       <button class="quick-btn" onclick="setGoal('Manage fever and infection')">🌡 Fever</button>
       <button class="quick-btn" onclick="setGoal('Hypertension management plan')">💓 Hypertension</button>
@@ -277,16 +49,32 @@
       <button class="quick-btn" onclick="setGoal('Annual general checkup')">📋 Checkup</button>
     </div>
 
+    <div class="section-label">Planning Mode</div>
+    <div class="mode-row">
+      <div class="mode-switch" role="tablist" aria-label="Planning mode">
+        <button type="button" class="mode-option active" data-mode="auto">Auto</button>
+        <button type="button" class="mode-option" data-mode="ai">AI Only</button>
+        <button type="button" class="mode-option" data-mode="fallback">Fallback</button>
+      </div>
+      <span class="mode-badge" id="modeBadge">Auto</span>
+    </div>
+    <select id="modeSelect" class="sr-only" aria-hidden="true" tabindex="-1">
+      <option value="auto" selected>Auto</option>
+      <option value="ai">AI only</option>
+      <option value="fallback">Fallback only</option>
+    </select>
+
     <button class="run-btn" id="runBtn" onclick="runAgent()">
       <span id="btnIcon">▶</span>
       <span id="btnText">Generate Plan</span>
     </button>
   </section>
 
-  <!-- ERROR -->
+  <!-- ERROR MESSAGE -->
   <div class="error-msg" id="errorMsg"></div>
+  <div class="info-msg" id="infoMsg"></div>
 
-  <!-- SUMMARY -->
+  <!-- SUMMARY CARD -->
   <section class="summary-card" id="summaryCard">
     <div class="section-label">Execution Plan</div>
     <h2 id="planTitle">—</h2>
@@ -295,13 +83,13 @@
     <div class="stat-row" id="statRow"></div>
   </section>
 
-  <!-- TIMELINE -->
+  <!-- EXECUTION TIMELINE -->
   <section class="timeline-section" id="timelineSection">
     <h2>📅 Execution Timeline</h2>
     <div class="timeline" id="timeline"></div>
   </section>
 
-  <!-- TASK CARDS -->
+  <!-- TASK BREAKDOWN -->
   <section class="tasks-section" id="tasksSection">
     <h2>🗂 Task Breakdown</h2>
     <div class="tasks-grid" id="tasksGrid"></div>
@@ -309,300 +97,6 @@
 
 </div>
 
-<script>
-// ─── Helpers ────────────────────────────────────────────────
-function setGoal(g) { document.getElementById('goalInput').value = g; }
-
-function typeIcons(t) {
-  return { consultation:'👨‍⚕️', lab_test:'🔬', medication:'💊', followup:'📞' }[t] || '📋';
-}
-
-function badgeClass(s) {
-  return { validated:'badge-validated', alternative_found:'badge-alternative_found',
-           unavailable:'badge-unavailable', scheduled:'badge-scheduled' }[s] || 'badge-pending';
-}
-
-function badgeLabel(s) {
-  return { validated:'✓ Validated', alternative_found:'⚠ Alternative', 
-           unavailable:'✗ Unavailable', scheduled:'📅 Scheduled' }[s] || s;
-}
-
-function classifyLog(line) {
-  if (line.includes('==='))        return 'header';
-  if (line.includes('✓'))          return 'success';
-  if (line.includes('✗'))          return 'error';
-  if (line.includes('⚠'))          return 'warning';
-  return '';
-}
-
-// ─── Mock Agent (mirrors Python logic) ──────────────────────
-const KB = {
-  "diabetes": {
-    description: "Comprehensive Diabetes Management Plan",
-    tasks: [
-      {id:1,description:"Initial Consultation with Endocrinologist",task_type:"consultation",resource:"Endocrinologist",dependencies:[],priority:3,estimated_duration:"45 min"},
-      {id:2,description:"Fasting Blood Glucose Test",task_type:"lab_test",resource:"Blood Glucose Fasting",dependencies:[1],priority:3,estimated_duration:"2 hours"},
-      {id:3,description:"HbA1c Test",task_type:"lab_test",resource:"HbA1c",dependencies:[1],priority:3,estimated_duration:"6 hours"},
-      {id:4,description:"Lipid Profile Test",task_type:"lab_test",resource:"Lipid Profile",dependencies:[1],priority:2,estimated_duration:"4 hours"},
-      {id:5,description:"Prescribe Metformin (if Type 2 confirmed)",task_type:"medication",resource:"Metformin",dependencies:[2,3],priority:3,estimated_duration:"Ongoing"},
-      {id:6,description:"Dietary & Lifestyle Counselling",task_type:"consultation",resource:"General Physician",dependencies:[3],priority:2,estimated_duration:"60 min"},
-      {id:7,description:"Follow-up with Endocrinologist (4 weeks)",task_type:"followup",resource:"Endocrinologist",dependencies:[5,6],priority:2,estimated_duration:"30 min"},
-    ]
-  },
-  "fever": {
-    description: "Acute Fever Diagnosis & Treatment Plan",
-    tasks: [
-      {id:1,description:"Initial Symptom Assessment",task_type:"consultation",resource:"General Physician",dependencies:[],priority:3,estimated_duration:"20 min"},
-      {id:2,description:"Complete Blood Count (CBC) Test",task_type:"lab_test",resource:"Complete Blood Count",dependencies:[1],priority:3,estimated_duration:"4 hours"},
-      {id:3,description:"Urine Routine Examination",task_type:"lab_test",resource:"Urine Routine",dependencies:[1],priority:2,estimated_duration:"2 hours"},
-      {id:4,description:"Prescribe Paracetamol for fever management",task_type:"medication",resource:"Paracetamol",dependencies:[1],priority:3,estimated_duration:"As needed"},
-      {id:5,description:"Prescribe Amoxicillin if bacterial infection",task_type:"medication",resource:"Amoxicillin",dependencies:[2],priority:2,estimated_duration:"7 days"},
-      {id:6,description:"Follow-up if fever persists > 3 days",task_type:"followup",resource:"General Physician",dependencies:[2,3],priority:1,estimated_duration:"20 min"},
-    ]
-  },
-  "hypertension": {
-    description: "Hypertension Assessment & Management Plan",
-    tasks: [
-      {id:1,description:"BP Measurement & Initial Assessment",task_type:"consultation",resource:"General Physician",dependencies:[],priority:3,estimated_duration:"30 min"},
-      {id:2,description:"ECG",task_type:"lab_test",resource:"ECG",dependencies:[1],priority:3,estimated_duration:"30 minutes"},
-      {id:3,description:"Lipid Profile Test",task_type:"lab_test",resource:"Lipid Profile",dependencies:[1],priority:2,estimated_duration:"4 hours"},
-      {id:4,description:"Prescribe Lisinopril (ACE Inhibitor)",task_type:"medication",resource:"Lisinopril",dependencies:[1],priority:3,estimated_duration:"Ongoing"},
-      {id:5,description:"Prescribe Aspirin (if cardiac risk)",task_type:"medication",resource:"Aspirin",dependencies:[2],priority:2,estimated_duration:"Ongoing"},
-      {id:6,description:"Lifestyle Modification Counselling",task_type:"consultation",resource:"General Physician",dependencies:[1],priority:2,estimated_duration:"45 min"},
-      {id:7,description:"Cardiology Referral if Stage 2",task_type:"consultation",resource:"Cardiologist",dependencies:[2,3],priority:2,estimated_duration:"45 min"},
-      {id:8,description:"Follow-up BP Check (2 weeks)",task_type:"followup",resource:"General Physician",dependencies:[4,6],priority:2,estimated_duration:"20 min"},
-    ]
-  },
-  "cardiac": {
-    description: "Cardiac Care & Treatment Plan",
-    tasks: [
-      {id:1,description:"Emergency Cardiac Assessment",task_type:"consultation",resource:"Cardiologist",dependencies:[],priority:3,estimated_duration:"60 min"},
-      {id:2,description:"ECG",task_type:"lab_test",resource:"ECG",dependencies:[1],priority:3,estimated_duration:"30 minutes"},
-      {id:3,description:"Complete Blood Count",task_type:"lab_test",resource:"Complete Blood Count",dependencies:[1],priority:3,estimated_duration:"4 hours"},
-      {id:4,description:"Lipid Profile",task_type:"lab_test",resource:"Lipid Profile",dependencies:[1],priority:3,estimated_duration:"4 hours"},
-      {id:5,description:"Prescribe Atorvastatin",task_type:"medication",resource:"Atorvastatin",dependencies:[4],priority:3,estimated_duration:"Ongoing"},
-      {id:6,description:"Prescribe Aspirin",task_type:"medication",resource:"Aspirin",dependencies:[2],priority:3,estimated_duration:"Ongoing"},
-      {id:7,description:"Cardiac Rehabilitation Program",task_type:"consultation",resource:"Cardiologist",dependencies:[2,3],priority:2,estimated_duration:"90 min"},
-      {id:8,description:"Follow-up Cardiology (1 week)",task_type:"followup",resource:"Cardiologist",dependencies:[5,6],priority:3,estimated_duration:"30 min"},
-    ]
-  },
-  "respiratory": {
-    description: "Respiratory Condition Management Plan",
-    tasks: [
-      {id:1,description:"Respiratory Assessment",task_type:"consultation",resource:"Pulmonologist",dependencies:[],priority:3,estimated_duration:"45 min"},
-      {id:2,description:"Chest X-Ray",task_type:"lab_test",resource:"Chest X-Ray",dependencies:[1],priority:3,estimated_duration:"30 min"},
-      {id:3,description:"Complete Blood Count",task_type:"lab_test",resource:"Complete Blood Count",dependencies:[1],priority:2,estimated_duration:"4 hours"},
-      {id:4,description:"Prescribe Salbutamol Inhaler",task_type:"medication",resource:"Salbutamol",dependencies:[1],priority:3,estimated_duration:"As needed"},
-      {id:5,description:"Breathing Exercise & Physiotherapy",task_type:"consultation",resource:"Pulmonologist",dependencies:[2],priority:2,estimated_duration:"60 min"},
-      {id:6,description:"Follow-up in 2 weeks",task_type:"followup",resource:"Pulmonologist",dependencies:[4,5],priority:2,estimated_duration:"30 min"},
-    ]
-  },
-  "general checkup": {
-    description: "Annual Health Checkup Plan",
-    tasks: [
-      {id:1,description:"Comprehensive Physical Examination",task_type:"consultation",resource:"General Physician",dependencies:[],priority:2,estimated_duration:"60 min"},
-      {id:2,description:"Complete Blood Count",task_type:"lab_test",resource:"Complete Blood Count",dependencies:[1],priority:2,estimated_duration:"4 hours"},
-      {id:3,description:"Blood Glucose Fasting",task_type:"lab_test",resource:"Blood Glucose Fasting",dependencies:[1],priority:2,estimated_duration:"2 hours"},
-      {id:4,description:"Lipid Profile",task_type:"lab_test",resource:"Lipid Profile",dependencies:[1],priority:2,estimated_duration:"4 hours"},
-      {id:5,description:"Thyroid Profile",task_type:"lab_test",resource:"Thyroid Profile",dependencies:[1],priority:1,estimated_duration:"6 hours"},
-      {id:6,description:"Review Results & Recommendations",task_type:"consultation",resource:"General Physician",dependencies:[2,3,4,5],priority:2,estimated_duration:"30 min"},
-    ]
-  },
-};
-
-const DOCTORS = {
-  "General Physician":["Dr. Sharma","Dr. Mehta"],
-  "Cardiologist":["Dr. Patel"],
-  "Neurologist":["Dr. Rao"],
-  "Endocrinologist":["Dr. Gupta"],
-  "Pulmonologist":["Dr. Joshi"],
-  "Orthopedist":["Dr. Verma"],
-};
-const MEDICINES = {
-  "Paracetamol":{stock:true,alternatives:[]},
-  "Metformin":{stock:true,alternatives:["Glucophage"]},
-  "Lisinopril":{stock:false,alternatives:["Enalapril","Ramipril"]},
-  "Atorvastatin":{stock:true,alternatives:[]},
-  "Amoxicillin":{stock:true,alternatives:["Azithromycin"]},
-  "Aspirin":{stock:true,alternatives:[]},
-  "Insulin":{stock:true,alternatives:["Glargine"]},
-  "Salbutamol":{stock:false,alternatives:["Formoterol"]},
-};
-const LABS = {
-  "Complete Blood Count":{available:true,turnaround:"4 hours"},
-  "Blood Glucose Fasting":{available:true,turnaround:"2 hours"},
-  "HbA1c":{available:true,turnaround:"6 hours"},
-  "Lipid Profile":{available:true,turnaround:"4 hours"},
-  "ECG":{available:true,turnaround:"30 minutes"},
-  "Chest X-Ray":{available:false,turnaround:null},
-  "MRI Brain":{available:true,turnaround:"2 days"},
-  "Thyroid Profile":{available:true,turnaround:"6 hours"},
-  "Urine Routine":{available:true,turnaround:"2 hours"},
-};
-
-function rnd(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
-function futureSlot(){
-  const d=new Date(); d.setHours(d.getHours()+Math.floor(Math.random()*48)+2);
-  return d.toISOString().slice(0,16).replace('T',' ');
-}
-
-function detectCondition(goal){
-  const g=goal.toLowerCase();
-  for(const k of Object.keys(KB)) if(g.includes(k)) return k;
-  return "general checkup";
-}
-
-function validateTask(t){
-  const task={...t, notes:"", status:"pending", validation_result:{}};
-  if(t.task_type==="consultation"){
-    const docs=DOCTORS[t.resource]||[];
-    if(docs.length){ const doc=rnd(docs); task.status="validated"; task.validation_result={available:true,doctor:doc,next_slot:futureSlot()}; task.notes=`Assigned to ${doc} | Slot: ${task.validation_result.next_slot}`; }
-    else { task.status="unavailable"; task.notes=`No ${t.resource} available. Consider teleconsultation.`; }
-  } else if(t.task_type==="lab_test"){
-    const lab=LABS[t.resource]||{available:true,turnaround:"1 day"};
-    if(lab.available){ task.status="validated"; task.notes=`Turnaround: ${lab.turnaround}`; task.validation_result=lab; }
-    else { task.status="unavailable"; task.notes="Lab test currently unavailable. Consider alternate facility."; task.validation_result=lab; }
-  } else if(t.task_type==="medication"){
-    const med=MEDICINES[t.resource]||{stock:true,alternatives:[]};
-    if(med.stock){ task.status="validated"; task.notes=`${t.resource} in stock.`; }
-    else { task.status=med.alternatives.length?"alternative_found":"unavailable"; task.notes=med.alternatives.length?`Out of stock. Alternatives: ${med.alternatives.join(', ')}`:"Out of stock. No alternatives found."; }
-    task.validation_result=med;
-  } else if(t.task_type==="followup"){
-    task.status="scheduled"; task.notes="Follow-up appointment to be confirmed after primary treatment.";
-  }
-  return task;
-}
-
-function topoSort(tasks){
-  const map={}, visited=new Set(), result=[];
-  tasks.forEach(t=>map[t.id]=t);
-  function dfs(id){
-    if(visited.has(id)) return; visited.add(id);
-    (map[id].dependencies||[]).forEach(dfs);
-    result.push(map[id]);
-  }
-  tasks.forEach(t=>dfs(t.id));
-  return result.sort((a,b)=>b.priority-a.priority);
-}
-
-function generateTimeline(tasks){
-  let cur=new Date(); const tl=[];
-  tasks.forEach((t,i)=>{
-    t.scheduled_time=cur.toISOString().slice(0,16).replace('T',' ');
-    tl.push({step:i+1,task_id:t.id,description:t.description,type:t.task_type,scheduled_time:t.scheduled_time,duration:t.estimated_duration,status:t.status});
-    cur=new Date(cur.getTime()+(t.estimated_duration.includes('min')?1:4)*3600000);
-  });
-  return tl;
-}
-
-// ── Streaming log renderer ───────────────────────────────────
-
-// ── Main agent runner ──────────────────────────────────────
-async function runAgent(){
-  const goal=document.getElementById('goalInput').value.trim();
-  if(!goal){ showError('Please enter a healthcare goal.'); return; }
-
-  hideError();
-  clearResults();
-  setLoading(true);
-
-  await sleep(400);
-
-  const condition=detectCondition(goal);
-  const data=KB[condition];
-  const rawTasks=data.tasks;
-
-  const validated=rawTasks.map(validateTask);
-  const ordered=topoSort(validated);
-  const timeline=generateTimeline(ordered);
-
-  const nVal=validated.filter(t=>t.status==='validated').length;
-  const nUna=validated.filter(t=>t.status==='unavailable').length;
-  const nAlt=validated.filter(t=>t.status==='alternative_found').length;
-
-  setLoading(false);
-  renderResults({goal, condition, description:data.description, tasks:ordered, timeline, nVal, nUna, nAlt});
-}
-
-// ── Renderers ────────────────────────────────────────────────
-function renderResults({goal, condition, description, tasks, timeline, nVal, nUna, nAlt}){
-  // Summary
-  document.getElementById('planTitle').textContent=goal;
-  document.getElementById('planDesc').textContent=description;
-  document.getElementById('planSummary').textContent=
-    `Healthcare plan for '${condition}' generated with ${tasks.length} tasks. `+
-    `${nVal} resources validated, ${nUna} unavailable, ${nAlt} with alternatives suggested.`;
-  document.getElementById('statRow').innerHTML=`
-    <div class="stat"><div class="num">${tasks.length}</div><div class="lbl">Total Tasks</div></div>
-    <div class="stat"><div class="num" style="color:var(--accent3)">${nVal}</div><div class="lbl">Validated</div></div>
-    <div class="stat"><div class="num" style="color:var(--warn)">${nAlt}</div><div class="lbl">Alternatives</div></div>
-    <div class="stat"><div class="num" style="color:var(--danger)">${nUna}</div><div class="lbl">Unavailable</div></div>
-  `;
-  document.getElementById('summaryCard').classList.add('visible');
-
-  // Timeline
-  const tlEl=document.getElementById('timeline');
-  tlEl.innerHTML='';
-  timeline.forEach((step,i)=>{
-    const task=tasks.find(t=>t.id===step.task_id)||tasks[i];
-    const deps=task.dependencies&&task.dependencies.length?`Depends on: Task ${task.dependencies.join(', ')}`:null;
-    tlEl.innerHTML+=`
-      <div class="timeline-item" style="animation-delay:${i*60}ms">
-        <div class="tl-dot ${step.type}">${typeIcons(step.type)}</div>
-        <div class="tl-content">
-          <div class="tl-header">
-            <span class="tl-title">${step.description}</span>
-            <span class="tl-badge ${badgeClass(task.status)}">${badgeLabel(task.status)}</span>
-          </div>
-          <div class="tl-meta">
-            <span>🕐 ${step.scheduled_time}</span>
-            <span>⏱ ${step.duration}</span>
-            <span>📍 ${task.resource}</span>
-          </div>
-          ${task.notes?`<div class="tl-notes">${task.notes}</div>`:''}
-          ${deps?`<div class="tl-dep">🔗 ${deps}</div>`:''}
-        </div>
-      </div>`;
-  });
-  document.getElementById('timelineSection').classList.add('visible');
-
-  // Task Cards
-  const gridEl=document.getElementById('tasksGrid');
-  gridEl.innerHTML='';
-  tasks.forEach((t,i)=>{
-    gridEl.innerHTML+=`
-      <div class="task-card" style="animation-delay:${i*50}ms">
-        <div class="task-card-header">
-          <div class="task-num">${t.id}</div>
-          <div class="task-title">${t.description}</div>
-        </div>
-        <div class="task-resource">${typeIcons(t.task_type)} ${t.resource}</div>
-        <div class="task-info">
-          <span>⏱ ${t.estimated_duration}</span>
-          <span>⭐ Priority: ${'★'.repeat(t.priority)}${'☆'.repeat(3-t.priority)}</span>
-          <span class="tl-badge ${badgeClass(t.status)}" style="align-self:flex-start;margin-top:4px">${badgeLabel(t.status)}</span>
-        </div>
-      </div>`;
-  });
-  document.getElementById('tasksSection').classList.add('visible');
-}
-
-function clearResults(){
-  ['summaryCard','timelineSection','tasksSection'].forEach(id=>document.getElementById(id).classList.remove('visible'));
-}
-
-function setLoading(on){
-  const btn=document.getElementById('runBtn');
-  document.getElementById('btnIcon').innerHTML=on?'<div class="spinner"></div>':'▶';
-  document.getElementById('btnText').textContent=on?'Agent Running…':'Generate Plan';
-  btn.disabled=on;
-}
-
-function showError(msg){ const el=document.getElementById('errorMsg'); el.textContent=msg; el.classList.add('visible'); }
-function hideError(){ document.getElementById('errorMsg').classList.remove('visible'); }
-function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
-
-document.getElementById('goalInput').addEventListener('keydown',e=>{ if(e.key==='Enter') runAgent(); });
-</script>
+<script src="/assets/js/script.js"></script>
 </body>
 </html>

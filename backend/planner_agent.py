@@ -7,24 +7,160 @@ import json
 import os
 import time
 import random
+from pathlib import Path
 from datetime import datetime, timedelta
-from dotenv import load_dotenv
+from dotenv import load_dotenv, find_dotenv
 
-from langchain_groq import ChatGroq
-from langchain.prompts import PromptTemplate
-from langchain.chains import LLMChain
+try:
+    from langchain_groq import ChatGroq
+except ImportError:
+    ChatGroq = None
 
-load_dotenv()
+try:
+    from langchain_core.prompts import PromptTemplate
+except ImportError:
+    PromptTemplate = None
+
+def _load_environment() -> None:
+    # Load root and backend .env files so runtime works regardless of launch directory.
+    backend_dir = Path(__file__).resolve().parent
+    project_root = backend_dir.parent
+    for env_path in (project_root / ".env", backend_dir / ".env"):
+        if env_path.exists():
+            load_dotenv(env_path, override=True)
+    load_dotenv(find_dotenv(usecwd=True), override=True)
+
+
+_load_environment()
 
 # ─────────────────────────────────────────────
 #  LLM SETUP
 # ─────────────────────────────────────────────
 
-llm = ChatGroq(
-    api_key=os.getenv("GROQ_API_KEY"),
-    model_name="llama3-8b-8192",
-    temperature=0.3,
-)
+GROQ_API_KEY = os.getenv("GROQ_API_KEY", "").strip()
+GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.1-8b-instant")
+
+
+HEALTHCARE_KNOWLEDGE_BASE = {
+    "diabetes": {
+        "description": "Comprehensive Diabetes Management Plan",
+        "keywords": ["diabetes", "blood sugar", "glucose", "hba1c", "metformin", "insulin"],
+        "tasks": [
+            {"description": "Consult an endocrinologist for diabetes assessment", "task_type": "consultation", "resource": "Endocrinologist", "dependencies": [], "priority": 3, "estimated_duration": "30 min"},
+            {"description": "Check fasting blood glucose", "task_type": "lab_test", "resource": "Blood Glucose Fasting", "dependencies": [1], "priority": 3, "estimated_duration": "2 hours"},
+            {"description": "Review long-term glycemic control", "task_type": "lab_test", "resource": "HbA1c", "dependencies": [1], "priority": 2, "estimated_duration": "6 hours"},
+            {"description": "Start glucose-lowering medication if appropriate", "task_type": "medication", "resource": "Metformin", "dependencies": [2, 3], "priority": 3, "estimated_duration": "Ongoing"},
+            {"description": "Schedule follow-up review", "task_type": "followup", "resource": "Endocrinologist", "dependencies": [4], "priority": 2, "estimated_duration": "7 days"},
+        ],
+    },
+    "hypertension": {
+        "description": "Blood Pressure Control and Cardiovascular Risk Reduction Plan",
+        "keywords": ["hypertension", "high blood pressure", "bp", "pressure"],
+        "tasks": [
+            {"description": "Consult a cardiologist or general physician", "task_type": "consultation", "resource": "Cardiologist", "dependencies": [], "priority": 3, "estimated_duration": "30 min"},
+            {"description": "Check ECG for cardiovascular screening", "task_type": "lab_test", "resource": "ECG", "dependencies": [1], "priority": 2, "estimated_duration": "30 minutes"},
+            {"description": "Review lipid profile", "task_type": "lab_test", "resource": "Lipid Profile", "dependencies": [1], "priority": 2, "estimated_duration": "4 hours"},
+            {"description": "Begin blood pressure medication if prescribed", "task_type": "medication", "resource": "Lisinopril", "dependencies": [2, 3], "priority": 3, "estimated_duration": "Ongoing"},
+            {"description": "Schedule follow-up blood pressure review", "task_type": "followup", "resource": "Cardiologist", "dependencies": [4], "priority": 2, "estimated_duration": "7 days"},
+        ],
+    },
+    "cardiac": {
+        "description": "Cardiac Risk Assessment and Support Plan",
+        "keywords": ["cardiac", "heart", "chest pain", "angina", "cardiology"],
+        "tasks": [
+            {"description": "Consult cardiology for symptom review", "task_type": "consultation", "resource": "Cardiologist", "dependencies": [], "priority": 3, "estimated_duration": "30 min"},
+            {"description": "Perform ECG evaluation", "task_type": "lab_test", "resource": "ECG", "dependencies": [1], "priority": 3, "estimated_duration": "30 minutes"},
+            {"description": "Review cholesterol and cardiovascular risk markers", "task_type": "lab_test", "resource": "Lipid Profile", "dependencies": [1], "priority": 2, "estimated_duration": "4 hours"},
+            {"description": "Start antiplatelet support if appropriate", "task_type": "medication", "resource": "Aspirin", "dependencies": [2, 3], "priority": 3, "estimated_duration": "Ongoing"},
+            {"description": "Plan follow-up cardiology review", "task_type": "followup", "resource": "Cardiologist", "dependencies": [4], "priority": 2, "estimated_duration": "7 days"},
+        ],
+    },
+    "respiratory": {
+        "description": "Respiratory Symptom Evaluation and Support Plan",
+        "keywords": ["respiratory", "cough", "asthma", "breathing", "lungs", "pulmonary"],
+        "tasks": [
+            {"description": "Consult a pulmonologist for airway assessment", "task_type": "consultation", "resource": "Pulmonologist", "dependencies": [], "priority": 3, "estimated_duration": "30 min"},
+            {"description": "Obtain a chest X-ray if symptoms warrant", "task_type": "lab_test", "resource": "Chest X-Ray", "dependencies": [1], "priority": 2, "estimated_duration": "2 days"},
+            {"description": "Review bronchodilator therapy", "task_type": "medication", "resource": "Salbutamol", "dependencies": [1], "priority": 3, "estimated_duration": "Ongoing"},
+            {"description": "Arrange follow-up respiratory review", "task_type": "followup", "resource": "Pulmonologist", "dependencies": [2, 3], "priority": 2, "estimated_duration": "7 days"},
+        ],
+    },
+    "fever": {
+        "description": "Fever and Infection Evaluation Plan",
+        "keywords": ["fever", "infection", "temperature", "flu"],
+        "tasks": [
+            {"description": "Consult a general physician for symptom review", "task_type": "consultation", "resource": "General Physician", "dependencies": [], "priority": 3, "estimated_duration": "30 min"},
+            {"description": "Check complete blood count", "task_type": "lab_test", "resource": "Complete Blood Count", "dependencies": [1], "priority": 3, "estimated_duration": "4 hours"},
+            {"description": "Consider symptomatic treatment if recommended", "task_type": "medication", "resource": "Paracetamol", "dependencies": [1, 2], "priority": 2, "estimated_duration": "3 days"},
+            {"description": "Plan follow-up if symptoms persist", "task_type": "followup", "resource": "General Physician", "dependencies": [3], "priority": 2, "estimated_duration": "3 days"},
+        ],
+    },
+    "general checkup": {
+        "description": "Preventive Health Checkup Plan",
+        "keywords": ["checkup", "check-up", "annual", "routine", "screening"],
+        "tasks": [
+            {"description": "Consult a general physician for preventive review", "task_type": "consultation", "resource": "General Physician", "dependencies": [], "priority": 3, "estimated_duration": "30 min"},
+            {"description": "Perform complete blood count screening", "task_type": "lab_test", "resource": "Complete Blood Count", "dependencies": [1], "priority": 2, "estimated_duration": "4 hours"},
+            {"description": "Check lipid profile for risk assessment", "task_type": "lab_test", "resource": "Lipid Profile", "dependencies": [1], "priority": 2, "estimated_duration": "4 hours"},
+            {"description": "Review routine follow-up and preventive counseling", "task_type": "followup", "resource": "General Physician", "dependencies": [2, 3], "priority": 1, "estimated_duration": "7 days"},
+        ],
+    },
+}
+
+
+def _normalize_condition(condition: str) -> str:
+    return condition.strip().lower()
+
+
+def _fallback_condition_for_goal(goal: str) -> tuple[str, str]:
+    normalized_goal = goal.lower()
+    for condition_name, info in HEALTHCARE_KNOWLEDGE_BASE.items():
+        for keyword in info.get("keywords", []):
+            if keyword in normalized_goal:
+                return condition_name, info["description"]
+    fallback = HEALTHCARE_KNOWLEDGE_BASE["general checkup"]
+    return "general checkup", fallback["description"]
+
+
+def _fallback_tasks_for_condition(condition: str) -> list:
+    normalized_condition = _normalize_condition(condition)
+    info = HEALTHCARE_KNOWLEDGE_BASE.get(normalized_condition) or HEALTHCARE_KNOWLEDGE_BASE["general checkup"]
+    tasks = []
+    for index, task_data in enumerate(info["tasks"], start=1):
+        tasks.append(
+            Task(
+                task_id=index,
+                description=task_data["description"],
+                task_type=task_data["task_type"],
+                resource=task_data["resource"],
+                dependencies=task_data.get("dependencies", []),
+                priority=task_data.get("priority", 2),
+                estimated_duration=task_data.get("estimated_duration", "30 min"),
+            )
+        )
+    return tasks
+
+
+def _safe_json_loads(raw: str):
+    cleaned = raw.strip().replace("```json", "").replace("```", "").strip()
+    return json.loads(cleaned)
+
+
+llm = None
+if GROQ_API_KEY and ChatGroq is not None:
+    llm = ChatGroq(
+        api_key=GROQ_API_KEY,
+        model_name=GROQ_MODEL,
+        temperature=0.3,
+    )
+
+
+def _build_llm_client():
+    api_key = os.getenv("GROQ_API_KEY", "").strip()
+    model = os.getenv("GROQ_MODEL", "llama-3.1-8b-instant")
+    if not api_key or ChatGroq is None:
+        return None
+    return ChatGroq(api_key=api_key, model_name=model, temperature=0.3)
 
 # ─────────────────────────────────────────────
 #  MOCK TOOL LAYER
@@ -216,9 +352,10 @@ class Scheduler:
 #  LANGCHAIN PROMPTS
 # ─────────────────────────────────────────────
 
-CONDITION_PROMPT = PromptTemplate(
-    input_variables=["goal"],
-    template="""
+if PromptTemplate is not None:
+    CONDITION_PROMPT = PromptTemplate(
+        input_variables=["goal"],
+        template="""
 You are a healthcare AI assistant. A user has given this goal:
 "{goal}"
 
@@ -229,11 +366,11 @@ Identify the primary medical condition and return a JSON object with:
 Respond ONLY with valid JSON. No explanation. No markdown. No extra text.
 Example: {{"condition": "diabetes", "description": "Comprehensive Diabetes Management Plan"}}
 """
-)
+    )
 
-TASK_DECOMPOSITION_PROMPT = PromptTemplate(
-    input_variables=["goal", "condition"],
-    template="""
+    TASK_DECOMPOSITION_PROMPT = PromptTemplate(
+        input_variables=["goal", "condition"],
+        template="""
 You are a healthcare planning AI. Generate a structured treatment plan for:
 Goal: "{goal}"
 Condition: "{condition}"
@@ -257,7 +394,10 @@ Rules:
 
 Respond ONLY with a valid JSON array. No explanation. No markdown. No extra text.
 """
-)
+    )
+else:
+    CONDITION_PROMPT = None
+    TASK_DECOMPOSITION_PROMPT = None
 
 
 # ─────────────────────────────────────────────
@@ -270,41 +410,97 @@ class PlannerAgent:
         self.scheduler     = Scheduler()
         self.memory        = MemoryStore()
         self.reasoning_log = []
+        self.llm_enabled = False
+        self.condition_chain = None
+        self.task_chain = None
+        self._refresh_llm_runtime()
 
-        self.condition_chain = LLMChain(llm=llm, prompt=CONDITION_PROMPT)
-        self.task_chain      = LLMChain(llm=llm, prompt=TASK_DECOMPOSITION_PROMPT)
+    def _refresh_llm_runtime(self):
+        _load_environment()
+        llm_client = _build_llm_client()
+        self.llm_enabled = (
+            llm_client is not None
+            and CONDITION_PROMPT is not None
+            and TASK_DECOMPOSITION_PROMPT is not None
+        )
+        self.condition_chain = llm_client if self.llm_enabled else None
+        self.task_chain = llm_client if self.llm_enabled else None
+
+    @staticmethod
+    def _invoke_llm_with_prompt(llm_client, prompt_template, **kwargs) -> str:
+        prompt_text = prompt_template.format(**kwargs)
+        response = llm_client.invoke(prompt_text)
+        return response.content if hasattr(response, "content") else str(response)
 
     def _log(self, msg: str):
         self.reasoning_log.append(f"[{datetime.now().strftime('%H:%M:%S')}] {msg}")
 
-    def understand_goal(self, goal: str) -> tuple:
-        self._log(f"Sending goal to Groq LLM: '{goal}'")
-        raw = self.condition_chain.run(goal=goal)
-        raw = raw.strip().replace("```json", "").replace("```", "").strip()
-        parsed      = json.loads(raw)
-        condition   = parsed.get("condition", "general checkup")
-        description = parsed.get("description", "Healthcare Plan")
-        self._log(f"LLM detected: '{condition}' → {description}")
+    def understand_goal(self, goal: str, mode: str = "auto") -> tuple:
+        if mode not in {"auto", "ai", "fallback"}:
+            raise ValueError("mode must be one of: auto, ai, fallback")
+
+        if mode != "fallback":
+            if self.llm_enabled:
+                try:
+                    self._log(f"Sending goal to Groq LLM: '{goal}'")
+                    raw = self._invoke_llm_with_prompt(self.condition_chain, CONDITION_PROMPT, goal=goal)
+                    parsed = _safe_json_loads(raw)
+                    condition   = parsed.get("condition", "general checkup")
+                    description = parsed.get("description", "Healthcare Plan")
+                    self._log(f"LLM detected: '{condition}' → {description}")
+                    self.memory.add({"type": "goal_understood", "condition": condition})
+                    return condition, description
+                except Exception as exc:
+                    if mode == "ai":
+                        raise RuntimeError(f"AI mode failed while understanding goal: {exc}") from exc
+                    self._log(f"LLM goal understanding failed, using fallback rules: {exc}")
+            elif mode == "ai":
+                raise RuntimeError("AI mode requested, but Groq/LangChain is unavailable")
+
+        condition, description = _fallback_condition_for_goal(goal)
+        self._log(f"Fallback detected: '{condition}' → {description}")
         self.memory.add({"type": "goal_understood", "condition": condition})
         return condition, description
 
-    def decompose_tasks(self, goal: str, condition: str) -> list:
-        self._log("LLM decomposing goal into tasks...")
-        raw = self.task_chain.run(goal=goal, condition=condition)
-        raw = raw.strip().replace("```json", "").replace("```", "").strip()
-        task_data = json.loads(raw)
-        tasks = []
-        for t in task_data:
-            task = Task(
-                task_id            = t["id"],
-                description        = t["description"],
-                task_type          = t["task_type"],
-                resource           = t["resource"],
-                dependencies       = t.get("dependencies", []),
-                priority           = t.get("priority", 2),
-                estimated_duration = t.get("estimated_duration", "30 min"),
-            )
-            tasks.append(task)
+    def decompose_tasks(self, goal: str, condition: str, mode: str = "auto") -> list:
+        if mode not in {"auto", "ai", "fallback"}:
+            raise ValueError("mode must be one of: auto, ai, fallback")
+
+        if mode != "fallback":
+            if self.llm_enabled:
+                try:
+                    self._log("LLM decomposing goal into tasks...")
+                    raw = self._invoke_llm_with_prompt(
+                        self.task_chain,
+                        TASK_DECOMPOSITION_PROMPT,
+                        goal=goal,
+                        condition=condition,
+                    )
+                    task_data = _safe_json_loads(raw)
+                    tasks = []
+                    for t in task_data:
+                        task = Task(
+                            task_id            = t["id"],
+                            description        = t["description"],
+                            task_type          = t["task_type"],
+                            resource           = t["resource"],
+                            dependencies       = t.get("dependencies", []),
+                            priority           = t.get("priority", 2),
+                            estimated_duration = t.get("estimated_duration", "30 min"),
+                        )
+                        tasks.append(task)
+                        self._log(f"  Task {task.id}: {task.description} [{task.task_type}]")
+                    self.memory.add({"type": "tasks_decomposed", "count": len(tasks)})
+                    return tasks
+                except Exception as exc:
+                    if mode == "ai":
+                        raise RuntimeError(f"AI mode failed while decomposing tasks: {exc}") from exc
+                    self._log(f"LLM task decomposition failed, using fallback rules: {exc}")
+            elif mode == "ai":
+                raise RuntimeError("AI mode requested, but Groq/LangChain is unavailable")
+
+        tasks = _fallback_tasks_for_condition(condition)
+        for task in tasks:
             self._log(f"  Task {task.id}: {task.description} [{task.task_type}]")
         self.memory.add({"type": "tasks_decomposed", "count": len(tasks)})
         return tasks
@@ -374,12 +570,13 @@ class PlannerAgent:
             f"{nVal} validated, {nUna} unavailable, {nAlt} with alternatives."
         )
 
-    def create_plan(self, goal: str) -> dict:
+    def create_plan(self, goal: str, mode: str = "auto") -> dict:
         self.reasoning_log = []
-        self._log("=== Planner Agent Started (Groq LLM + LangChain) ===")
+        self._refresh_llm_runtime()
+        self._log(f"=== Planner Agent Started (mode={mode}) ===")
 
-        condition, description = self.understand_goal(goal)
-        tasks                  = self.decompose_tasks(goal, condition)
+        condition, description = self.understand_goal(goal, mode=mode)
+        tasks                  = self.decompose_tasks(goal, condition, mode=mode)
         tasks                  = self.validate_resources(tasks)
         ordered, timeline      = self.schedule_and_optimise(tasks)
         summary                = self.build_summary(condition, ordered)
